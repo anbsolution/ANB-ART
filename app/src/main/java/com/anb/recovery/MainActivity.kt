@@ -191,7 +191,7 @@ class MainActivity : Activity() {
         }
 
         addSpace(20)
-        addText(content, "ANB Android Recovery  ·  Version 0.3.1", 12, muted, true)
+        addText(content, "ANB Android Recovery  ·  Version 0.4.0", 12, muted, true)
         addText(content, "Local diagnostics  ·  Consent gated  ·  No auto-upload", 12, muted, false)
     }
 
