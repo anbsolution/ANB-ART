@@ -116,7 +116,7 @@ class MainActivity : Activity() {
             setPadding(dp(14), dp(14), dp(14), dp(14))
             background = rounded(bg, 14, line)
             visibility = View.GONE
-            isTextSelectable = true
+            setTextIsSelectable(true)
         }
         val summaryParams = matchWrap().apply { topMargin = dp(12) }
         repairCard.addView(summary, summaryParams)
