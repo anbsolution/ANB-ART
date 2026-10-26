@@ -1,20 +1,31 @@
 package com.anb.recovery
 
 import android.app.Activity
-import android.os.Bundle
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
-import android.view.Gravity
-import android.view.ViewGroup
-import android.widget.*
-import android.content.Intent
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
+import android.os.Bundle
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Button
+import android.widget.CheckBox
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
+import android.widget.Toast
 
 class MainActivity : Activity() {
-    private val navy = Color.rgb(13, 24, 44)
-    private val cyan = Color.rgb(0, 188, 212)
-    private val ink = Color.rgb(30, 41, 59)
-    private val muted = Color.rgb(91, 105, 125)
+
+    private val navy = Color.rgb(23, 37, 65)
+    private val cyan = Color.rgb(0, 158, 180)
+    private val ink = Color.rgb(36, 48, 67)
+    private val muted = Color.rgb(105, 119, 139)
+    private val page = Color.rgb(244, 247, 252)
+    private val white = Color.WHITE
+
     private lateinit var content: LinearLayout
     private lateinit var consent: CheckBox
     private lateinit var notes: EditText
@@ -22,92 +33,243 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val scroll = ScrollView(this).apply { setBackgroundColor(Color.rgb(245, 248, 252)) }
+
+        window.statusBarColor = navy
+        window.navigationBarColor = navy
+
+        val report = DeviceDiagnostics.collect()
+
+        val scroll = ScrollView(this).apply {
+            setBackgroundColor(page)
+            clipToPadding = false
+            isFillViewport = true
+        }
+
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(24), dp(20), dp(28))
+            setPadding(dp(20), dp(20), dp(20), dp(28))
         }
+
         scroll.addView(content)
         setContentView(scroll)
 
-        addText("ANB", 14, cyan, true)
-        addText("Android Recovery", 28, navy, true)
-        addText("Authorized repair • Device diagnostics • Official recovery", 14, muted, false)
-        addCard("Device diagnostics", "Basic device information is read locally.")
-        val report = DeviceDiagnostics.collect()
-        addText("Manufacturer: ${report.manufacturer}", 15, ink, true)
-        addText("Model: ${report.model}", 15, ink, false)
-        addText("Android: ${report.androidVersion} (SDK ${report.sdk})", 15, ink, false)
-        addText("Device code: ${report.deviceCode}", 15, ink, false)
+        addText(content, "ANB  •  RECOVERY TOOLS", 12, cyan, true)
+        addText(content, "Android Recovery", 29, navy, true)
+        addText(
+            content,
+            "Authorized repair  •  Device diagnostics  •  Official recovery",
+            14, muted, false
+        )
+        addSpace(18)
 
-        addCard("Repair case", "Do not enter customer PINs or passwords.")
+        val deviceCard = addCard(
+            "Device diagnostics",
+            "Basic information collected locally on this device."
+        )
+        addPill(deviceCard, "DEVICE INFORMATION")
+        addText(deviceCard, "Manufacturer", 12, muted, true)
+        addText(deviceCard, report.manufacturer, 17, ink, true)
+        addText(deviceCard, "Model", 12, muted, true)
+        addText(deviceCard, report.model, 16, ink, false)
+        addText(deviceCard, report.androidVersion, 15, ink, false)
+        addText(deviceCard, "Device code: ${report.deviceCode}", 14, muted, false)
+
+        addSpace(12)
+
+        val repairCard = addCard(
+            "Repair case",
+            "Never enter customer PINs, passwords or account recovery codes."
+        )
+
         consent = CheckBox(this).apply {
             text = "Customer has authorized this diagnostic / repair"
+            textSize = 14f
             setTextColor(ink)
+            buttonTintList = android.content.res.ColorStateList.valueOf(cyan)
         }
-        content.addView(consent, matchWrap())
+        repairCard.addView(consent, matchWrap())
+
         notes = EditText(this).apply {
-            hint = "Technician notes"
+            hint = "Technician notes (optional)"
+            textSize = 14f
+            setTextColor(ink)
+            setHintTextColor(muted)
+            gravity = android.view.Gravity.TOP
             minLines = 3
-            gravity = Gravity.TOP
-            setTextColor(ink)
-        }
-        content.addView(notes, matchWrap())
-        content.addView(Button(this).apply {
-            text = "Create local repair summary"
-            setOnClickListener {
-                try {
-                    summary.text = RepairCaseManager.createLocalSummary(
-                        consent.isChecked, report, notes.text.toString()
-                    )
-                    summary.visibility = TextView.VISIBLE
-                } catch (_: IllegalArgumentException) {
-                    Toast.makeText(this@MainActivity, "Confirm customer authorization first", Toast.LENGTH_LONG).show()
-                }
-            }
-        }, matchWrap())
-        summary = TextView(this).apply {
-            visibility = TextView.GONE
-            setTextColor(ink)
-            textSize = 13f
+            maxLines = 6
             setPadding(dp(12), dp(12), dp(12), dp(12))
-            setBackgroundColor(Color.WHITE)
+            background = rounded(Color.rgb(248, 250, 253), 12, Color.rgb(222, 229, 239))
         }
-        content.addView(summary, matchWrap())
+        val noteParams = matchWrap()
+        noteParams.topMargin = dp(12)
+        repairCard.addView(notes, noteParams)
 
-        addCard("Official recovery checklist", "This app does not bypass screen locks, encryption, or FRP.")
-        RecoveryGuide.steps.forEachIndexed { index, step -> addText("${index + 1}. $step", 14, ink, false) }
-        content.addView(Button(this).apply {
-            text = "Open Google Account Recovery"
-            setOnClickListener {
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://accounts.google.com/signin/recovery")))
-            }
-        }, matchWrap())
-        addText("Version 0.1.0 • anbsolutioner@gmail.com", 12, muted, false)
-    }
+        val reportButton = makeButton("CREATE LOCAL REPAIR SUMMARY")
+        repairCard.addView(reportButton, matchWrap())
 
-    private fun addCard(title: String, subtitle: String) {
-        val box = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
+        summary = TextView(this).apply {
+            text = "Your repair summary will appear here after you confirm authorization."
+            textSize = 14f
+            setTextColor(ink)
             setPadding(dp(14), dp(14), dp(14), dp(14))
-            setBackgroundColor(Color.WHITE)
+            background = rounded(white, 12, Color.rgb(226, 232, 241))
+            visibility = View.GONE
         }
-        box.addView(TextView(this).apply {
-            text = title; textSize = 18f; setTypeface(null, Typeface.BOLD); setTextColor(navy)
-        })
-        box.addView(TextView(this).apply { text = subtitle; textSize = 13f; setTextColor(muted) })
-        content.addView(box, matchWrap().apply { topMargin = dp(18); bottomMargin = dp(10) })
+        val summaryParams = matchWrap()
+        summaryParams.topMargin = dp(12)
+        repairCard.addView(summary, summaryParams)
+
+        reportButton.setOnClickListener {
+            if (!consent.isChecked) {
+                Toast.makeText(
+                    this,
+                    "Confirm customer authorization first.",
+                    Toast.LENGTH_LONG
+                ).show()
+                return@setOnClickListener
+            }
+
+            try {
+                summary.text = RepairCaseManager.createLocalSummary(
+                    consent.isChecked,
+                    report,
+                    notes.text.toString()
+                )
+                summary.visibility = View.VISIBLE
+            } catch (e: IllegalArgumentException) {
+                Toast.makeText(
+                    this,
+                    e.message ?: "Unable to create repair summary.",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+
+        addSpace(12)
+
+        val guideCard = addCard(
+            "Official recovery checklist",
+            "This app does not bypass screen locks, encryption or FRP."
+        )
+
+        RecoveryGuide.steps.forEachIndexed { index, step ->
+            addText(guideCard, "${index + 1}. $step", 14, ink, false)
+        }
+
+        val googleButton = makeButton("OPEN GOOGLE ACCOUNT RECOVERY")
+        guideCard.addView(googleButton, matchWrap())
+        googleButton.setOnClickListener {
+            startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://accounts.google.com/signin/recovery")
+                )
+            )
+        }
+
+        addSpace(18)
+        addText(content, "ANB Android Recovery  •  Version 0.2.0", 12, muted, false)
+        addText(content, "Local-first diagnostics  •  No automatic upload", 12, muted, false)
     }
 
-    private fun addText(value: String, size: Int, color: Int, bold: Boolean) {
-        content.addView(TextView(this).apply {
-            text = value; textSize = size.toFloat(); setTextColor(color)
-            if (bold) setTypeface(null, Typeface.BOLD)
-            setPadding(0, dp(4), 0, dp(4))
-        }, matchWrap())
+    private fun addCard(title: String, subtitle: String): LinearLayout {
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(16), dp(16), dp(16))
+            background = rounded(white, 18, Color.rgb(232, 237, 245))
+            elevation = dp(2).toFloat()
+        }
+
+        val params = matchWrap()
+        params.bottomMargin = dp(8)
+        content.addView(card, params)
+
+        addText(card, title, 19, navy, true)
+        addText(card, subtitle, 13, muted, false)
+        addSpaceIn(card, 12)
+
+        return card
     }
-    private fun matchWrap() = LinearLayout.LayoutParams(
-        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-    )
-    private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
+
+    private fun addPill(parent: LinearLayout, label: String) {
+        val pill = TextView(this).apply {
+            text = label
+            textSize = 11f
+            setTextColor(cyan)
+            setTypeface(typeface, Typeface.BOLD)
+            setPadding(dp(10), dp(7), dp(10), dp(7))
+            background = rounded(Color.rgb(231, 249, 251), 30, Color.TRANSPARENT)
+        }
+        val params = wrapWrap()
+        params.bottomMargin = dp(10)
+        parent.addView(pill, params)
+    }
+
+    private fun addText(
+        parent: LinearLayout,
+        value: String,
+        size: Int,
+        color: Int,
+        bold: Boolean
+    ) {
+        val view = TextView(this).apply {
+            text = value
+            textSize = size.toFloat()
+            setTextColor(color)
+            if (bold) setTypeface(typeface, Typeface.BOLD)
+            setPadding(0, dp(4), 0, dp(4))
+            setLineSpacing(dp(2).toFloat(), 1f)
+        }
+        parent.addView(view, matchWrap())
+    }
+
+    private fun makeButton(label: String): Button {
+        return Button(this).apply {
+            text = label
+            textSize = 13f
+            isAllCaps = false
+            setTextColor(white)
+            background = rounded(navy, 12, Color.TRANSPARENT)
+            elevation = dp(2).toFloat()
+            val p = dp(8)
+            setPadding(p, p, p, p)
+        }
+    }
+
+    private fun rounded(
+        color: Int,
+        radius: Int,
+        stroke: Int
+    ): GradientDrawable {
+        return GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = dp(radius).toFloat()
+            if (stroke != Color.TRANSPARENT) {
+                setStroke(dp(1), stroke)
+            }
+        }
+    }
+
+    private fun addSpace(height: Int) {
+        content.addView(View(this), LinearLayout.LayoutParams(1, dp(height)))
+    }
+
+    private fun addSpaceIn(parent: LinearLayout, height: Int) {
+        parent.addView(View(this), LinearLayout.LayoutParams(1, dp(height)))
+    }
+
+    private fun matchWrap() =
+        LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+
+    private fun wrapWrap() =
+        LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+
+    private fun dp(value: Int): Int =
+        (value * resources.displayMetrics.density).toInt()
 }
