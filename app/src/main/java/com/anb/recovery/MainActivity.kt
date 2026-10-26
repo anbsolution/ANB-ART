@@ -116,10 +116,32 @@ class MainActivity : Activity() {
             setPadding(dp(14), dp(14), dp(14), dp(14))
             background = rounded(bg, 14, line)
             visibility = View.GONE
-            textIsSelectable = true
+            isTextSelectable = true
         }
         val summaryParams = matchWrap().apply { topMargin = dp(12) }
         repairCard.addView(summary, summaryParams)
+
+        // Explicit, consent-gated sharing; nothing is sent automatically.
+        val shareButton = makeButton("Share local repair summary", false).apply {
+            isEnabled = false
+            alpha = 0.55f
+            contentDescription = "Share the generated local repair summary"
+        }
+        val shareParams = matchWrap().apply { topMargin = dp(8) }
+        repairCard.addView(shareButton, shareParams)
+        shareButton.setOnClickListener {
+            if (summary.visibility != View.VISIBLE || !consent.isChecked) {
+                Toast.makeText(this, "Create a summary after confirming customer authorization first.", Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, "ANB Android Recovery - Repair Summary")
+                putExtra(Intent.EXTRA_TEXT, summary.text.toString())
+            }
+            startActivity(Intent.createChooser(shareIntent, "Share repair summary"))
+        }
+
         reportButton.setOnClickListener {
             if (!consent.isChecked) {
                 Toast.makeText(this, "Confirm customer authorization first.", Toast.LENGTH_LONG).show()
@@ -128,6 +150,8 @@ class MainActivity : Activity() {
             try {
                 summary.text = RepairCaseManager.createLocalSummary(consent.isChecked, report, notes.text.toString())
                 summary.visibility = View.VISIBLE
+                shareButton.isEnabled = true
+                shareButton.alpha = 1f
             } catch (e: IllegalArgumentException) {
                 Toast.makeText(this, e.message ?: "Unable to create repair summary.", Toast.LENGTH_LONG).show()
             }
@@ -167,7 +191,7 @@ class MainActivity : Activity() {
         }
 
         addSpace(20)
-        addText(content, "ANB Android Recovery  ·  Version 0.3.0", 12, muted, true)
+        addText(content, "ANB Android Recovery  ·  Version 0.3.1", 12, muted, true)
         addText(content, "Local diagnostics  ·  Consent gated  ·  No auto-upload", 12, muted, false)
     }
 
