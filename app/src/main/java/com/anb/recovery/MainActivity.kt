@@ -156,34 +156,57 @@ class MainActivity : Activity() {
             }
             val reviewedReportText = summary.text.toString()
             val reviewedNotesSnapshot = summaryNotesSnapshot
+            val reviewAcknowledgement = CheckBox(this).apply {
+                text = "I reviewed this report and confirm I am authorized to share it."
+                setTextColor(ink)
+                buttonTintList = ColorStateList.valueOf(blue)
+                setPadding(dp(4), dp(8), dp(4), dp(8))
+            }
             AlertDialog.Builder(this)
                 .setTitle("Review before sharing")
                 .setMessage(RepairCaseManager.createShareReviewMessage(reviewedReportText))
+                .setView(reviewAcknowledgement)
                 .setNegativeButton("Cancel", null)
-                .setPositiveButton("Continue to share") { _, _ ->
-                    if (summary.visibility != View.VISIBLE ||
-                        !RepairCaseManager.canShareSummary(
-                            reviewedNotesSnapshot, notes.text.toString(), consent.isChecked
-                        ) ||
-                        !RepairCaseManager.reviewedReportMatches(
-                            reviewedReportText, summary.text.toString()
-                        )
-                    ) {
-                        Toast.makeText(
-                            this,
-                            "The report changed. Create a new summary before sharing.",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        return@setPositiveButton
+                .setPositiveButton("Continue to share", null)
+                .create()
+                .apply {
+                    setOnShowListener {
+                        getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                            if (!reviewAcknowledgement.isChecked) {
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "Confirm the report review before sharing.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                return@setOnClickListener
+                            }
+                            if (summary.visibility != View.VISIBLE ||
+                                !RepairCaseManager.canShareSummary(
+                                    reviewedNotesSnapshot, notes.text.toString(), consent.isChecked
+                                ) ||
+                                !RepairCaseManager.reviewedReportMatches(
+                                    reviewedReportText, summary.text.toString()
+                                )
+                            ) {
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "The report changed. Create a new summary before sharing.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                dismiss()
+                                return@setOnClickListener
+                            }
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_SUBJECT, "ANB Android Recovery - Repair Summary")
+                                putExtra(Intent.EXTRA_TEXT, reviewedReportText)
+                            }
+                            dismiss()
+                            startActivity(Intent.createChooser(shareIntent, "Share repair summary"))
+                        }
                     }
-                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_SUBJECT, "ANB Android Recovery - Repair Summary")
-                        putExtra(Intent.EXTRA_TEXT, reviewedReportText)
-                    }
-                    startActivity(Intent.createChooser(shareIntent, "Share repair summary"))
+                    show()
                 }
-                .show()
         }
 
         reportButton.setOnClickListener {
@@ -236,7 +259,7 @@ class MainActivity : Activity() {
         }
 
         addSpace(20)
-        addText(content, "ANB Android Recovery  ·  Version 0.8.0", 12, muted, true)
+        addText(content, "ANB Android Recovery  ·  Version 0.9.0", 12, muted, true)
         addText(content, "Local diagnostics  ·  Consent gated  ·  No auto-upload", 12, muted, false)
     }
 

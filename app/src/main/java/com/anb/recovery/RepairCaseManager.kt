@@ -18,6 +18,10 @@ object RepairCaseManager {
     fun reviewedReportMatches(reviewedReport: String, currentReport: String): Boolean =
         reviewedReport == currentReport
 
+    /** Requires explicit acknowledgement of the report review. */
+    fun mayProceedAfterReviewAcknowledgement(acknowledged: Boolean): Boolean =
+        acknowledged
+
     fun createLocalSummary(consent: Boolean, report: DeviceReport, notes: String): String {
         require(ConsentManager.mayCreateRepairSummary(consent)) {
             "Customer consent is required."

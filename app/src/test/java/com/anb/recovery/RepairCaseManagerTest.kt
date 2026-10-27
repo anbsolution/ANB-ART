@@ -60,6 +60,12 @@ class RepairCaseManagerTest {
     }
 
     @Test
+    fun sharingRequiresExplicitReviewAcknowledgement() {
+        assertTrue(RepairCaseManager.mayProceedAfterReviewAcknowledgement(true))
+        assertTrue(!RepairCaseManager.mayProceedAfterReviewAcknowledgement(false))
+    }
+
+    @Test
     fun blankNotesUseSafePlaceholder() {
         val summary = RepairCaseManager.createLocalSummary(true, report, "  ")
 
