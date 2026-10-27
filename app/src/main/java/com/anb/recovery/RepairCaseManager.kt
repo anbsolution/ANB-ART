@@ -35,6 +35,10 @@ object RepairCaseManager {
             reviewedReportMatches(reviewedReport, currentReport) &&
             mayProceedAfterReviewAcknowledgement(acknowledgementConfirmed)
 
+    /** Redacts the device code in the outgoing copy only. */
+    fun redactDeviceCodeForSharing(summary: String): String =
+        summary.replace(Regex("(?m)^Device code:.*$"), "Device code: [redacted]")
+
     fun createLocalSummary(consent: Boolean, report: DeviceReport, notes: String): String {
         require(ConsentManager.mayCreateRepairSummary(consent)) {
             "Customer consent is required."

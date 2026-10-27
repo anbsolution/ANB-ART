@@ -162,10 +162,21 @@ class MainActivity : Activity() {
                 buttonTintList = ColorStateList.valueOf(blue)
                 setPadding(dp(4), dp(8), dp(4), dp(8))
             }
+            val redactDeviceCode = CheckBox(this).apply {
+                text = "Hide device code in shared copy (recommended)"
+                isChecked = true
+                setTextColor(ink)
+                buttonTintList = ColorStateList.valueOf(blue)
+                setPadding(dp(4), dp(8), dp(4), dp(8))
+            }
             AlertDialog.Builder(this)
                 .setTitle("Review before sharing")
                 .setMessage(RepairCaseManager.createShareReviewMessage(reviewedReportText))
-                .setView(reviewAcknowledgement)
+                .setView(LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    addView(reviewAcknowledgement)
+                    addView(redactDeviceCode)
+                })
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Continue to share", null)
                 .create()
@@ -201,7 +212,12 @@ class MainActivity : Activity() {
                             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
                                 putExtra(Intent.EXTRA_SUBJECT, "ANB Android Recovery - Repair Summary")
-                                putExtra(Intent.EXTRA_TEXT, reviewedReportText)
+                                putExtra(
+                                    Intent.EXTRA_TEXT,
+                                    if (redactDeviceCode.isChecked)
+                                        RepairCaseManager.redactDeviceCodeForSharing(reviewedReportText)
+                                    else reviewedReportText
+                                )
                             }
                             dismiss()
                             startActivity(Intent.createChooser(shareIntent, "Share repair summary"))

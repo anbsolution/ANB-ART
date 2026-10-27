@@ -85,6 +85,17 @@ class RepairCaseManagerTest {
     }
 
     @Test
+    fun deviceCodeRedactionChangesSharedCopyOnly() {
+        val original = "ANB Android Recovery - Repair Summary\\nDevice code: lime\\nTechnician notes:\\nformat device"
+        val shared = RepairCaseManager.redactDeviceCodeForSharing(original)
+
+        assertTrue(shared.contains("Device code: [redacted]"))
+        assertTrue(!shared.contains("Device code: lime"))
+        assertTrue(original.contains("Device code: lime"))
+        assertTrue(shared.contains("Technician notes:\\nformat device"))
+    }
+
+    @Test
     fun blankNotesUseSafePlaceholder() {
         val summary = RepairCaseManager.createLocalSummary(true, report, "  ")
 
