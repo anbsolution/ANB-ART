@@ -46,6 +46,14 @@ class RepairCaseManagerTest {
     }
 
     @Test
+    fun shareReviewMessageIncludesExactReportAndPrivacyReminder() {
+        val review = RepairCaseManager.createShareReviewMessage("Sample repair report")
+        assertTrue(review.contains("Sample repair report"))
+        assertTrue(review.contains("device details and technician notes"))
+        assertTrue(review.contains("authorization to share"))
+    }
+
+    @Test
     fun blankNotesUseSafePlaceholder() {
         val summary = RepairCaseManager.createLocalSummary(true, report, "  ")
 

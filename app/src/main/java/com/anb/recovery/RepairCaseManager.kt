@@ -9,6 +9,11 @@ object RepairCaseManager {
     fun canShareSummary(generatedNotes: String?, currentNotes: String, consentConfirmed: Boolean): Boolean =
         consentConfirmed && generatedNotes != null && generatedNotes == currentNotes
 
+    fun createShareReviewMessage(summary: String): String =
+        "Review the exact report below before sharing. It may contain device details and technician notes.\n\n" +
+            summary +
+            "\n\nContinue only if you have authorization to share this information."
+
     fun createLocalSummary(consent: Boolean, report: DeviceReport, notes: String): String {
         require(ConsentManager.mayCreateRepairSummary(consent)) {
             "Customer consent is required."

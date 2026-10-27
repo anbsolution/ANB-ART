@@ -1,6 +1,7 @@
 package com.anb.recovery
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
@@ -153,12 +154,31 @@ class MainActivity : Activity() {
                 Toast.makeText(this, "Create a summary after confirming customer authorization first.", Toast.LENGTH_LONG).show()
                 return@setOnClickListener
             }
-            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, "ANB Android Recovery - Repair Summary")
-                putExtra(Intent.EXTRA_TEXT, summary.text.toString())
-            }
-            startActivity(Intent.createChooser(shareIntent, "Share repair summary"))
+            AlertDialog.Builder(this)
+                .setTitle("Review before sharing")
+                .setMessage(RepairCaseManager.createShareReviewMessage(summary.text.toString()))
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Continue to share") { _, _ ->
+                    if (summary.visibility != View.VISIBLE ||
+                        !RepairCaseManager.canShareSummary(
+                            summaryNotesSnapshot, notes.text.toString(), consent.isChecked
+                        )
+                    ) {
+                        Toast.makeText(
+                            this,
+                            "The report changed. Create a new summary before sharing.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        return@setPositiveButton
+                    }
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, "ANB Android Recovery - Repair Summary")
+                        putExtra(Intent.EXTRA_TEXT, summary.text.toString())
+                    }
+                    startActivity(Intent.createChooser(shareIntent, "Share repair summary"))
+                }
+                .show()
         }
 
         reportButton.setOnClickListener {
@@ -211,7 +231,7 @@ class MainActivity : Activity() {
         }
 
         addSpace(20)
-        addText(content, "ANB Android Recovery  ·  Version 0.6.0", 12, muted, true)
+        addText(content, "ANB Android Recovery  ·  Version 0.7.0", 12, muted, true)
         addText(content, "Local diagnostics  ·  Consent gated  ·  No auto-upload", 12, muted, false)
     }
 
