@@ -5,6 +5,10 @@ import java.util.Date
 import java.util.Locale
 
 object RepairCaseManager {
+    /** Sharing is allowed only when consent remains checked and notes match the generated report. */
+    fun canShareSummary(generatedNotes: String?, currentNotes: String, consentConfirmed: Boolean): Boolean =
+        consentConfirmed && generatedNotes != null && generatedNotes == currentNotes
+
     fun createLocalSummary(consent: Boolean, report: DeviceReport, notes: String): String {
         require(ConsentManager.mayCreateRepairSummary(consent)) {
             "Customer consent is required."
