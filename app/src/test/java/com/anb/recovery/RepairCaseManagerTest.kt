@@ -32,6 +32,12 @@ class RepairCaseManagerTest {
     }
 
     @Test
+    fun multilineTechnicianNotesArePreserved() {
+        val summary = RepairCaseManager.createLocalSummary(true, report, "Battery check\nCharging test")
+        assertTrue(summary.contains("Battery check\nCharging test"))
+    }
+
+    @Test
     fun blankNotesUseSafePlaceholder() {
         val summary = RepairCaseManager.createLocalSummary(true, report, "  ")
 
