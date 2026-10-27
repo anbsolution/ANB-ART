@@ -154,14 +154,19 @@ class MainActivity : Activity() {
                 Toast.makeText(this, "Create a summary after confirming customer authorization first.", Toast.LENGTH_LONG).show()
                 return@setOnClickListener
             }
+            val reviewedReportText = summary.text.toString()
+            val reviewedNotesSnapshot = summaryNotesSnapshot
             AlertDialog.Builder(this)
                 .setTitle("Review before sharing")
-                .setMessage(RepairCaseManager.createShareReviewMessage(summary.text.toString()))
+                .setMessage(RepairCaseManager.createShareReviewMessage(reviewedReportText))
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Continue to share") { _, _ ->
                     if (summary.visibility != View.VISIBLE ||
                         !RepairCaseManager.canShareSummary(
-                            summaryNotesSnapshot, notes.text.toString(), consent.isChecked
+                            reviewedNotesSnapshot, notes.text.toString(), consent.isChecked
+                        ) ||
+                        !RepairCaseManager.reviewedReportMatches(
+                            reviewedReportText, summary.text.toString()
                         )
                     ) {
                         Toast.makeText(
@@ -174,7 +179,7 @@ class MainActivity : Activity() {
                     val shareIntent = Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
                         putExtra(Intent.EXTRA_SUBJECT, "ANB Android Recovery - Repair Summary")
-                        putExtra(Intent.EXTRA_TEXT, summary.text.toString())
+                        putExtra(Intent.EXTRA_TEXT, reviewedReportText)
                     }
                     startActivity(Intent.createChooser(shareIntent, "Share repair summary"))
                 }
@@ -231,7 +236,7 @@ class MainActivity : Activity() {
         }
 
         addSpace(20)
-        addText(content, "ANB Android Recovery  ·  Version 0.7.0", 12, muted, true)
+        addText(content, "ANB Android Recovery  ·  Version 0.8.0", 12, muted, true)
         addText(content, "Local diagnostics  ·  Consent gated  ·  No auto-upload", 12, muted, false)
     }
 

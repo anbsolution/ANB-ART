@@ -14,6 +14,10 @@ object RepairCaseManager {
             summary +
             "\n\nContinue only if you have authorization to share this information."
 
+    /** True only if the reviewed report remains unchanged. */
+    fun reviewedReportMatches(reviewedReport: String, currentReport: String): Boolean =
+        reviewedReport == currentReport
+
     fun createLocalSummary(consent: Boolean, report: DeviceReport, notes: String): String {
         require(ConsentManager.mayCreateRepairSummary(consent)) {
             "Customer consent is required."

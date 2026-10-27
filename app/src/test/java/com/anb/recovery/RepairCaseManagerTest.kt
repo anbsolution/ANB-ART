@@ -54,6 +54,12 @@ class RepairCaseManagerTest {
     }
 
     @Test
+    fun reviewedReportMustRemainExact() {
+        assertTrue(RepairCaseManager.reviewedReportMatches("Report A", "Report A"))
+        assertTrue(!RepairCaseManager.reviewedReportMatches("Report A", "Report B"))
+    }
+
+    @Test
     fun blankNotesUseSafePlaceholder() {
         val summary = RepairCaseManager.createLocalSummary(true, report, "  ")
 
