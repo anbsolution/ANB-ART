@@ -10,6 +10,8 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.CheckBox
@@ -129,6 +131,21 @@ class MainActivity : Activity() {
         }
         val shareParams = matchWrap().apply { topMargin = dp(8) }
         repairCard.addView(shareButton, shareParams)
+        // Invalidate any stale report when consent or technician notes change.
+        fun invalidateSummary() {
+            summary.visibility = View.GONE
+            summary.text = "The repair summary will appear here after authorization is confirmed."
+            shareButton.isEnabled = false
+            shareButton.alpha = 0.55f
+        }
+
+        consent.setOnCheckedChangeListener { _, _ -> invalidateSummary() }
+        notes.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { invalidateSummary() }
+            override fun afterTextChanged(s: Editable?) = Unit
+        })
+
         shareButton.setOnClickListener {
             if (summary.visibility != View.VISIBLE || !consent.isChecked) {
                 Toast.makeText(this, "Create a summary after confirming customer authorization first.", Toast.LENGTH_LONG).show()
@@ -191,7 +208,7 @@ class MainActivity : Activity() {
         }
 
         addSpace(20)
-        addText(content, "ANB Android Recovery  ·  Version 0.4.0", 12, muted, true)
+        addText(content, "ANB Android Recovery  ·  Version 0.5.0", 12, muted, true)
         addText(content, "Local diagnostics  ·  Consent gated  ·  No auto-upload", 12, muted, false)
     }
 
