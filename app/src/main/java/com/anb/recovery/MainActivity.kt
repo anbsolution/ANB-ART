@@ -131,8 +131,10 @@ class MainActivity : Activity() {
         }
         val shareParams = matchWrap().apply { topMargin = dp(8) }
         repairCard.addView(shareButton, shareParams)
+        var summaryNotesSnapshot: String? = null
         // Invalidate any stale report when consent or technician notes change.
         fun invalidateSummary() {
+            summaryNotesSnapshot = null
             summary.visibility = View.GONE
             summary.text = "The repair summary will appear here after authorization is confirmed."
             shareButton.isEnabled = false
@@ -147,7 +149,7 @@ class MainActivity : Activity() {
         })
 
         shareButton.setOnClickListener {
-            if (summary.visibility != View.VISIBLE || !consent.isChecked) {
+            if (summary.visibility != View.VISIBLE || !RepairCaseManager.canShareSummary(summaryNotesSnapshot, notes.text.toString(), consent.isChecked)) {
                 Toast.makeText(this, "Create a summary after confirming customer authorization first.", Toast.LENGTH_LONG).show()
                 return@setOnClickListener
             }
@@ -166,6 +168,7 @@ class MainActivity : Activity() {
             }
             try {
                 summary.text = RepairCaseManager.createLocalSummary(consent.isChecked, report, notes.text.toString())
+                summaryNotesSnapshot = notes.text.toString()
                 summary.visibility = View.VISIBLE
                 shareButton.isEnabled = true
                 shareButton.alpha = 1f
@@ -208,7 +211,7 @@ class MainActivity : Activity() {
         }
 
         addSpace(20)
-        addText(content, "ANB Android Recovery  ·  Version 0.5.0", 12, muted, true)
+        addText(content, "ANB Android Recovery  ·  Version 0.6.0", 12, muted, true)
         addText(content, "Local diagnostics  ·  Consent gated  ·  No auto-upload", 12, muted, false)
     }
 

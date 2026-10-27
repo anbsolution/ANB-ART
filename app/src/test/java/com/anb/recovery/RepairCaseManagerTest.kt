@@ -38,6 +38,14 @@ class RepairCaseManagerTest {
     }
 
     @Test
+    fun sharingRequiresConsentAndExactGeneratedNotes() {
+        assertTrue(RepairCaseManager.canShareSummary("Battery check", "Battery check", true))
+        assertTrue(!RepairCaseManager.canShareSummary("Battery check", "Charging test", true))
+        assertTrue(!RepairCaseManager.canShareSummary("Battery check", "Battery check", false))
+        assertTrue(!RepairCaseManager.canShareSummary(null, "Battery check", true))
+    }
+
+    @Test
     fun blankNotesUseSafePlaceholder() {
         val summary = RepairCaseManager.createLocalSummary(true, report, "  ")
 
