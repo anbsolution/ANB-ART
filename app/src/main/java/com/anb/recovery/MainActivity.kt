@@ -181,11 +181,13 @@ class MainActivity : Activity() {
                                 return@setOnClickListener
                             }
                             if (summary.visibility != View.VISIBLE ||
-                                !RepairCaseManager.canShareSummary(
-                                    reviewedNotesSnapshot, notes.text.toString(), consent.isChecked
-                                ) ||
-                                !RepairCaseManager.reviewedReportMatches(
-                                    reviewedReportText, summary.text.toString()
+                                !RepairCaseManager.mayShareReviewedReport(
+                                    consentConfirmed = consent.isChecked,
+                                    generatedNotes = reviewedNotesSnapshot,
+                                    currentNotes = notes.text.toString(),
+                                    reviewedReport = reviewedReportText,
+                                    currentReport = summary.text.toString(),
+                                    acknowledgementConfirmed = reviewAcknowledgement.isChecked
                                 )
                             ) {
                                 Toast.makeText(
@@ -259,7 +261,7 @@ class MainActivity : Activity() {
         }
 
         addSpace(20)
-        addText(content, "ANB Android Recovery  ·  Version 0.9.0", 12, muted, true)
+        addText(content, "ANB Android Recovery  ·  Version 1.0.0", 12, muted, true)
         addText(content, "Local diagnostics  ·  Consent gated  ·  No auto-upload", 12, muted, false)
     }
 

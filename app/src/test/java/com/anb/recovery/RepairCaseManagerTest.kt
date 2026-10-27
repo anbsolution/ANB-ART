@@ -66,6 +66,25 @@ class RepairCaseManagerTest {
     }
 
     @Test
+    fun reviewedReportSharingRequiresAllConditions() {
+        assertTrue(RepairCaseManager.mayShareReviewedReport(
+            true, "notes", "notes", "report", "report", true
+        ))
+        assertTrue(!RepairCaseManager.mayShareReviewedReport(
+            false, "notes", "notes", "report", "report", true
+        ))
+        assertTrue(!RepairCaseManager.mayShareReviewedReport(
+            true, "notes", "changed notes", "report", "report", true
+        ))
+        assertTrue(!RepairCaseManager.mayShareReviewedReport(
+            true, "notes", "notes", "report", "changed report", true
+        ))
+        assertTrue(!RepairCaseManager.mayShareReviewedReport(
+            true, "notes", "notes", "report", "report", false
+        ))
+    }
+
+    @Test
     fun blankNotesUseSafePlaceholder() {
         val summary = RepairCaseManager.createLocalSummary(true, report, "  ")
 

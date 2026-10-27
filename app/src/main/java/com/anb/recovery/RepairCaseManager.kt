@@ -22,6 +22,19 @@ object RepairCaseManager {
     fun mayProceedAfterReviewAcknowledgement(acknowledged: Boolean): Boolean =
         acknowledged
 
+    /** Consolidates every precondition before report sharing. */
+    fun mayShareReviewedReport(
+        consentConfirmed: Boolean,
+        generatedNotes: String?,
+        currentNotes: String,
+        reviewedReport: String,
+        currentReport: String,
+        acknowledgementConfirmed: Boolean
+    ): Boolean =
+        canShareSummary(generatedNotes, currentNotes, consentConfirmed) &&
+            reviewedReportMatches(reviewedReport, currentReport) &&
+            mayProceedAfterReviewAcknowledgement(acknowledgementConfirmed)
+
     fun createLocalSummary(consent: Boolean, report: DeviceReport, notes: String): String {
         require(ConsentManager.mayCreateRepairSummary(consent)) {
             "Customer consent is required."
