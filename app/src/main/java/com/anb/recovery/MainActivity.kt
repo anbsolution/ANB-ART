@@ -7,410 +7,399 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
-import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
-import android.widget.CheckBox
-import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 
-/** Phase 1: complete professional repair-studio UI. No lock/FRP bypass functionality. */
+/**
+ * ANB Mobile Repair Studio Shop Edition.
+ * Visual flow: Home -> USB diagnostics -> Diagnostic report.
+ * USB Host visibility is not equivalent to ADB access or lock-state access.
+ * No PIN/pattern/password/FRP bypass is implemented.
+ */
 class MainActivity : Activity() {
-    private val navy = Color.rgb(9, 31, 69)
-    private val blue = Color.rgb(20, 91, 220)
-    private val pale = Color.rgb(229, 240, 255)
-    private val canvas = Color.rgb(244, 248, 253)
-    private val ink = Color.rgb(23, 38, 61)
-    private val muted = Color.rgb(105, 121, 145)
-    private val border = Color.rgb(220, 230, 243)
+    private val navy = Color.rgb(5, 18, 48)
+    private val navy2 = Color.rgb(9, 39, 91)
+    private val blue = Color.rgb(0, 116, 255)
+    private val cyan = Color.rgb(0, 210, 255)
+    private val pale = Color.rgb(235, 245, 255)
+    private val ink = Color.rgb(12, 31, 65)
+    private val muted = Color.rgb(83, 105, 137)
+    private val green = Color.rgb(0, 160, 75)
+    private val orange = Color.rgb(242, 139, 0)
+    private val purple = Color.rgb(115, 30, 210)
     private val white = Color.WHITE
+
     private lateinit var root: LinearLayout
-    private lateinit var page: LinearLayout
-    private var selectedTab = "Home"
-    private var latestSummary: String? = null
-    private var summaryNotesSnapshot: String? = null
+    private lateinit var content: LinearLayout
+    private var screen = "Home"
+    private var connectedCount = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = navy
         window.navigationBarColor = navy
-        root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(canvas)
-        }
-        setContentView(root)
         render()
     }
 
     private fun render() {
-        root.removeAllViews()
+        root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.rgb(239, 246, 255))
+        }
+        setContentView(root)
+
+        when (screen) {
+            "Diagnostics" -> diagnosticsScreen()
+            "Report" -> reportScreen()
+            else -> homeScreen()
+        }
+    }
+
+    private fun homeScreen() {
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(15), dp(18), dp(16))
-            setBackgroundColor(navy)
+            setPadding(dp(18), dp(14), dp(18), dp(17))
+            background = gradient(navy, Color.rgb(0, 75, 170), 0)
         }
-        val top = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        top.addView(label("ANB", 17, white, true).apply {
+        val top = row()
+        top.addView(text("☰", 25, white, true).apply { gravity = Gravity.CENTER }, lp(42, 48))
+        val brand = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        brand.addView(text("🔧  ANB", 25, white, true))
+        brand.addView(text("MOBILE REPAIR STUDIO", 13, white, true))
+        brand.addView(text("SHOP EDITION  •  PRO", 11, Color.rgb(255, 220, 0), true))
+        top.addView(brand, LinearParams(0, -2, 1f))
+        top.addView(text("⚙", 25, white, true).apply {
             gravity = Gravity.CENTER
-            background = rounded(blue, 12, blue)
-            setPadding(dp(12), dp(9), dp(12), dp(9))
-        }, wrap())
-        val titleBox = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), 0, 0, 0)
-        }
-        titleBox.addView(label("MOBILE RECOVERY STUDIO", 16, white, true))
-        titleBox.addView(label("Professional repair toolkit", 11, Color.rgb(190, 211, 240), false))
-        top.addView(titleBox, LinearLayout.LayoutParams(0, -2, 1f))
-        top.addView(label("?", 19, white, true).apply {
-            gravity = Gravity.CENTER
-            background = rounded(Color.rgb(29, 64, 117), 22, Color.rgb(65, 103, 158))
-            setOnClickListener { showInfo("Help & safety", "Use this toolkit only with the device owner's permission. It provides diagnostics and official recovery guidance. It does not bypass screen locks, encryption or account protections.") }
-        }, LinearLayout.LayoutParams(dp(40), dp(40)))
+            setOnClickListener { info("Settings", "Shop Edition • Local-first diagnostics • Customer consent required.") }
+        }, lp(42, 48))
         header.addView(top)
-        header.addView(label("Authorized diagnostics • Local-first workflow", 12, Color.rgb(206, 222, 245), false), wrap().apply { topMargin = dp(12) })
+        header.addView(text("Repair  |  Diagnostics  |  Official Recovery", 12, white, true).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, dp(10), 0, dp(2))
+        })
+        header.addView(text("USB CONNECT TO DIAGNOSE", 20, white, true).apply {
+            gravity = Gravity.CENTER
+            background = rounded(Color.rgb(0, 76, 163), 15, cyan)
+            setPadding(dp(12), dp(13), dp(12), dp(13))
+            setOnClickListener { screen = "Diagnostics"; render() }
+        }, match().apply { topMargin = dp(14) })
+        header.addView(text("Detect compatible USB devices • View available diagnostics", 12, white, false).apply {
+            gravity = Gravity.CENTER
+        })
         root.addView(header, match())
 
-        val scroll = ScrollView(this).apply { isFillViewport = true; clipToPadding = false }
-        page = LinearLayout(this).apply {
+        val scroll = ScrollView(this)
+        content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(15), dp(16), dp(22))
+            setPadding(dp(14), dp(14), dp(14), dp(14))
         }
-        scroll.addView(page)
-        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
-        when (selectedTab) {
-            "Home" -> showHome()
-            "Devices" -> showDevices()
-            "Tools" -> showTools()
-            "Records" -> showRecords()
-            else -> showMore()
-        }
-        renderBottomNavigation()
-    }
+        scroll.addView(content)
+        root.addView(scroll, LinearParams(-1, 0, 1f))
 
-    private fun showHome() {
-        val hero = card().apply { background = rounded(navy, 20, navy) }
-        hero.addView(label("WELCOME TO YOUR REPAIR WORKSPACE", 10, Color.rgb(177, 207, 246), true))
-        hero.addView(label("ANB Mobile\nRecovery Studio", 27, white, true))
-        hero.addView(label("Scan connected devices, review diagnostics and follow official recovery steps.", 13, Color.rgb(219, 231, 249), false))
-        hero.addView(button("Open USB Device Scanner", true).apply {
-            setOnClickListener { navigate("Devices") }
-        }, match().apply { topMargin = dp(13) })
-        page.addView(hero, match())
+        sectionTitle("SHOP WORKSPACE", "Choose an authorized service task")
+        val row1 = row()
+        row1.addView(serviceTile("🔧", "Repair", "System & boot guidance", blue) {
+            info("Repair", "Run basic diagnostics, record symptoms and follow official manufacturer repair guidance.")
+        }, LinearParams(0, dp(112), 1f))
+        row1.addView(space(8))
+        row1.addView(serviceTile("🛡", "Official Recovery", "Owner-assisted recovery", purple) {
+            info("Official Recovery", "Use the device owner's credentials and official account recovery. This app cannot bypass a screen lock or FRP.")
+        }, LinearParams(0, dp(112), 1f))
+        content.addView(row1, match())
 
-        section("SUPPORTED BRANDS", "Brand-specific official guidance")
-        val brands = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        listOf(
-            listOf(Triple("Redmi", "MI", Color.rgb(239, 102, 35)), Triple("OPPO", "O", Color.rgb(28, 143, 95))),
-            listOf(Triple("Samsung", "S", Color.rgb(28, 93, 196)), Triple("Vivo", "V", Color.rgb(31, 117, 216)))
-        ).forEach { pair ->
-            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            pair.forEachIndexed { index, brand ->
-                row.addView(brandTile(brand.first, brand.second, brand.third), LinearLayout.LayoutParams(0, dp(90), 1f))
-                if (index == 0) row.addView(View(this), LinearLayout.LayoutParams(dp(10), 1))
-            }
-            brands.addView(row, match().apply { bottomMargin = dp(9) })
-        }
-        page.addView(brands, match())
+        val row2 = row()
+        row2.addView(serviceTile("🧹", "Wipe Guidance", "Data-loss warning", orange) {
+            info("Wipe / Factory Reset", "A reset can permanently erase user data and may require the previously synced account. Proceed only through manufacturer-supported steps with explicit customer consent.")
+        }, LinearParams(0, dp(112), 1f))
+        row2.addView(space(8))
+        row2.addView(serviceTile("↻", "Factory Reset", "Official steps only", green) {
+            info("Factory Reset", "This app provides guidance only; it does not trigger a reset or bypass account verification.")
+        }, LinearParams(0, dp(112), 1f))
+        content.addView(row2, match().apply { topMargin = dp(9) })
 
-        section("QUICK WORKSPACE", "Common repair-shop tasks")
-        val actions = listOf(
-            Triple("USB Device Scanner", "Detect connected USB devices", "Devices"),
-            Triple("Device Diagnostics", "View this phone's basic details", "Tools"),
-            Triple("Official Recovery Guides", "Brand-wise support steps", "More"),
-            Triple("Service Records", "Review current repair session", "Records")
-        )
-        actions.chunked(2).forEach { group ->
-            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            group.forEachIndexed { index, item ->
-                row.addView(actionTile(item.first, item.second) { navigate(item.third) }, LinearLayout.LayoutParams(0, dp(108), 1f))
-                if (index == 0) row.addView(View(this), LinearLayout.LayoutParams(dp(10), 1))
-            }
-            page.addView(row, match().apply { bottomMargin = dp(9) })
-        }
-        val safety = card()
-        safety.addView(label("IMPORTANT", 11, Color.rgb(208, 112, 24), true))
-        safety.addView(label("USB connection alone cannot remove another phone's PIN or pattern. Use the owner's credentials or the manufacturer's official recovery process.", 13, ink, false))
-        page.addView(safety, match())
-    }
-
-    private fun showDevices() {
-        section("USB DEVICE SCANNER", "Connect a customer's phone with a compatible OTG adapter")
-        val host = DeviceDiagnostics.collect()
-        val hostCard = card()
-        hostCard.addView(label("HOST DEVICE", 10, muted, true))
-        hostCard.addView(label("${host.manufacturer} ${host.model}", 18, ink, true))
-        hostCard.addView(label("Android ${host.androidVersion} • SDK ${host.sdk}", 12, muted, false))
-        page.addView(hostCard, match())
-
-        val scanner = card()
-        scanner.addView(label("CONNECTED USB DEVICES", 16, ink, true))
-        scanner.addView(label("Lists devices visible to Android USB Host mode. No lock data is accessed.", 12, muted, false))
-        val results = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        fun refresh() {
-            results.removeAllViews()
-            val manager = getSystemService(Context.USB_SERVICE) as UsbManager
-            val devices = manager.deviceList.values.toList()
-            if (devices.isEmpty()) {
-                results.addView(label("No USB device detected. Check OTG adapter, cable and the connected phone's USB mode.", 13, muted, false), match().apply { topMargin = dp(12) })
-            } else {
-                devices.forEach { results.addView(usbDeviceCard(it), match().apply { topMargin = dp(9) }) }
-            }
-        }
-        scanner.addView(button("Refresh USB device list", true).apply { setOnClickListener { refresh() } }, match().apply { topMargin = dp(12) })
-        scanner.addView(results, match())
-        refresh()
-        page.addView(scanner, match())
-
-        val note = card()
-        note.addView(label("SCANNER LIMITATION", 11, Color.rgb(208, 112, 24), true))
-        note.addView(label("A normal Android app can list USB devices exposed by the host. It cannot read private phone data or remove a screen lock. ADB diagnostics require USB debugging to be enabled and authorized on the connected phone.", 13, ink, false))
-        page.addView(note, match().apply { topMargin = dp(12) })
-    }
-
-    private fun usbDeviceCard(device: UsbDevice): LinearLayout {
-        val item = card()
-        item.addView(label(device.productName ?: "USB device", 14, ink, true))
-        item.addView(label("Vendor ID: ${device.vendorId} • Product ID: ${device.productId}", 12, muted, false))
-        item.addView(label("Device class: ${device.deviceClass} • Interfaces: ${device.interfaceCount}", 12, muted, false))
-        return item
-    }
-
-    private fun showTools() {
-        section("REPAIR TOOLS", "Local diagnostics and customer-authorized documentation")
-        val report = DeviceDiagnostics.collect()
-        val diagnostics = card()
-        diagnostics.addView(label("DEVICE DIAGNOSTICS", 15, ink, true))
-        addInfoRow(diagnostics, "Manufacturer", report.manufacturer)
-        addInfoRow(diagnostics, "Model", report.model)
-        addInfoRow(diagnostics, "Android version", "${report.androidVersion} (SDK ${report.sdk})")
-        addInfoRow(diagnostics, "Device code", report.deviceCode)
-        page.addView(diagnostics, match())
-
-        val repair = card()
-        repair.addView(label("CUSTOMER REPAIR CASE", 16, ink, true))
-        repair.addView(label("Generate a local report only after confirming customer authorization.", 12, muted, false))
-        val consent = CheckBox(this).apply {
-            text = "Customer authorization confirmed"
-            textSize = 13f
-            setTextColor(ink)
-            buttonTintList = android.content.res.ColorStateList.valueOf(blue)
-        }
-        repair.addView(consent, match())
-        val notes = EditText(this).apply {
-            hint = "Technician notes (never enter PINs or passwords)"
-            minLines = 3
-            maxLines = 5
-            gravity = Gravity.TOP
-            textSize = 13f
-            setTextColor(ink)
-            setHintTextColor(muted)
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            background = rounded(canvas, 12, border)
-        }
-        repair.addView(notes, match().apply { topMargin = dp(8) })
-        val preview = label("", 12, ink, false).apply {
-            visibility = View.GONE
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            background = rounded(canvas, 12, border)
-            setTextIsSelectable(true)
-        }
-        repair.addView(button("Generate local repair summary", true).apply {
-            setOnClickListener {
-                if (!consent.isChecked) {
-                    toast("Confirm customer authorization first.")
-                } else {
-                    summaryNotesSnapshot = notes.text.toString()
-                    latestSummary = RepairCaseManager.createLocalSummary(true, report, notes.text.toString())
-                    preview.text = latestSummary
-                    preview.visibility = View.VISIBLE
+        sectionTitle("QUICK TOOLS", "Repair studio utilities")
+        val tools = row()
+        listOf("Device Info", "Diagnostics", "Service Logs", "Settings").forEachIndexed { i, name ->
+            tools.addView(text(
+                listOf("ⓘ", "∿", "▤", "⚙")[i] + "\n" + name,
+                11, blue, true
+            ).apply {
+                gravity = Gravity.CENTER
+                background = rounded(white, 12, Color.rgb(210, 225, 245))
+                setPadding(dp(3), dp(9), dp(3), dp(9))
+                setOnClickListener {
+                    if (name == "Diagnostics" || name == "Device Info") { screen = "Diagnostics"; render() }
+                    else info(name, "This section is part of the Shop Edition workspace.")
                 }
-            }
-        }, match().apply { topMargin = dp(10) })
-        repair.addView(preview, match().apply { topMargin = dp(10) })
-        repair.addView(button("Share reviewed, redacted summary", false).apply {
-            setOnClickListener {
-                val summary = latestSummary
-                if (!RepairCaseManager.canShareSummary(summaryNotesSnapshot, notes.text.toString(), consent.isChecked) || summary == null) {
-                    toast("Notes or authorization changed. Generate a new report before sharing.")
-                } else {
-                    AlertDialog.Builder(this@MainActivity)
-                        .setTitle("Review before sharing")
-                        .setMessage(RepairCaseManager.createShareReviewMessage(summary))
-                        .setNegativeButton("Cancel", null)
-                        .setPositiveButton("Share") { _, _ ->
-                            val send = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_SUBJECT, "ANB Mobile Recovery Studio - Repair Summary")
-                                putExtra(Intent.EXTRA_TEXT, RepairCaseManager.redactDeviceCodeForSharing(summary))
-                            }
-                            startActivity(Intent.createChooser(send, "Share repair summary"))
-                        }.show()
-                }
-            }
-        }, match().apply { topMargin = dp(9) })
-        page.addView(repair, match())
-
-        val recovery = card()
-        recovery.addView(label("OFFICIAL RECOVERY", 15, ink, true))
-        recovery.addView(label("A factory reset may erase customer data and can require the previously synced account afterward. Explain this risk before proceeding.", 13, muted, false))
-        recovery.addView(button("Open brand recovery guides", false).apply { setOnClickListener { navigate("More") } }, match().apply { topMargin = dp(10) })
-        page.addView(recovery, match().apply { topMargin = dp(12) })
-    }
-
-    private fun showRecords() {
-        section("SERVICE RECORDS", "Privacy-conscious repair session")
-        val session = card()
-        session.addView(label("CURRENT SESSION", 15, ink, true))
-        session.addView(label("Phase 1 creates repair summaries locally on demand. It does not upload customer records or claim to keep a permanent database.", 13, muted, false))
-        session.addView(button("Create a repair summary", true).apply { setOnClickListener { navigate("Tools") } }, match().apply { topMargin = dp(12) })
-        page.addView(session, match())
-        val privacy = card()
-        privacy.addView(label("CUSTOMER DATA", 13, Color.rgb(20, 148, 91), true))
-        privacy.addView(label("Never store PINs, passwords, Google credentials or private content in technician notes. Share only reviewed information with authorization.", 13, ink, false))
-        page.addView(privacy, match().apply { topMargin = dp(12) })
-    }
-
-    private fun showMore() {
-        section("GUIDES & SETTINGS", "Manufacturer resources and app information")
-        listOf("Redmi / Xiaomi", "OPPO", "Samsung", "Vivo").forEach { brand ->
-            page.addView(actionTile(brand, "Official support and recovery guidance") { showBrandGuide(brand) }, match().apply { bottomMargin = dp(9) })
+            }, LinearParams(0, dp(66), 1f))
+            if (i < 3) tools.addView(space(6))
         }
-        val about = card()
-        about.addView(label("ANB MOBILE RECOVERY STUDIO", 15, ink, true))
-        about.addView(label("Phase 1 • Professional Blue Shop UI", 13, muted, false))
-        about.addView(label("Package: com.anb.recovery", 12, muted, false))
-        about.addView(label("Authorized diagnostics • USB host discovery • Official recovery guidance", 12, muted, false))
-        page.addView(about, match())
-    }
+        content.addView(tools, match().apply { topMargin = dp(4) })
 
-    private fun showBrandGuide(brand: String) {
-        val url = when {
-            brand.contains("Redmi", true) || brand.contains("Xiaomi", true) -> "https://www.mi.com/global/support/"
-            brand.contains("OPPO", true) -> "https://support.oppo.com/"
-            brand.contains("Samsung", true) -> "https://www.samsung.com/in/support/"
-            else -> "https://www.vivo.com/in/support"
+        val note = text("SAFE & GUIDED PROCESS\nUSB detection does not unlock a phone. Diagnostics depend on what Android and the connected device expose.", 12, ink, true).apply {
+            background = rounded(white, 12, Color.rgb(205, 222, 244))
+            setPadding(dp(12), dp(12), dp(12), dp(12))
         }
-        AlertDialog.Builder(this)
-            .setTitle("$brand • Official recovery")
-            .setMessage("1. Verify ownership and customer authorization.\n\n2. Have the owner use their own screen credential or official account recovery.\n\n3. Explain that a factory reset can erase data.\n\n4. The device may request the previously synced account after reset. This app does not bypass locks or account verification.")
-            .setNegativeButton("Close", null)
-            .setPositiveButton("Open official support") { _, _ -> startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
-            .show()
+        content.addView(note, match().apply { topMargin = dp(12) })
+        bottomNav()
     }
 
-    private fun renderBottomNavigation() {
-        val nav = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
+    private fun diagnosticsScreen() {
+        topBar("Automatic Diagnostics", "‹") { screen = "Home"; render() }
+        val scroll = ScrollView(this)
+        content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(15), dp(14), dp(15), dp(18))
+        }
+        scroll.addView(content)
+        root.addView(scroll, LinearParams(-1, 0, 1f))
+
+        val manager = getSystemService(Context.USB_SERVICE) as UsbManager
+        val devices = manager.deviceList.values.toList()
+        connectedCount = devices.size
+
+        val scan = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(dp(4), dp(5), dp(4), dp(5))
+            setPadding(dp(16), dp(20), dp(16), dp(18))
+            background = gradient(navy, navy2, 22)
+        }
+        scan.addView(text("◎", 72, cyan, true).apply { gravity = Gravity.CENTER })
+        scan.addView(text(if (devices.isEmpty()) "USB DEVICE NOT DETECTED" else "USB DEVICE DETECTED", 17, white, true).apply {
+            gravity = Gravity.CENTER
+        })
+        scan.addView(text(if (devices.isEmpty()) "Connect a compatible phone using USB OTG" else "${devices.size} USB device(s) visible to Android", 12, Color.rgb(206, 226, 255), false).apply {
+            gravity = Gravity.CENTER
+        })
+        content.addView(scan, match())
+
+        sectionTitle("DIAGNOSTIC STEPS", "Live USB Host visibility check")
+        val steps = card()
+        addStatus(steps, "USB Host device list", if (devices.isEmpty()) "No device exposed" else "Detected", devices.isNotEmpty())
+        addStatus(steps, "Device descriptors", if (devices.isEmpty()) "Waiting for connection" else "Available", devices.isNotEmpty())
+        addStatus(steps, "ADB authorization", "Not checked by this app", false)
+        addStatus(steps, "Screen lock state", "Not accessible / not inspected", false)
+        addStatus(steps, "Private data access", "Not performed", true)
+        content.addView(steps, match())
+
+        if (devices.isNotEmpty()) {
+            sectionTitle("CONNECTED DEVICE DETAILS", "USB descriptors only")
+            devices.forEach { device ->
+                val d = card()
+                d.addView(text(device.productName ?: "USB device", 16, ink, true))
+                addInfo(d, "Vendor ID", device.vendorId.toString())
+                addInfo(d, "Product ID", device.productId.toString())
+                addInfo(d, "Interfaces", device.interfaceCount.toString())
+                addInfo(d, "Device class", device.deviceClass.toString())
+                content.addView(d, match())
+            }
+        }
+
+        val caution = text("IMPORTANT: A locked phone may charge or appear as a USB device while exposing no diagnostic interface. Full diagnostics may require owner-authorized USB debugging or an official recovery mode. This screen never claims to support locked-screen bypass.", 12, ink, false).apply {
+            background = rounded(white, 13, Color.rgb(205, 222, 244))
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+        }
+        content.addView(caution, match().apply { topMargin = dp(12) })
+        content.addView(primaryButton("Generate Diagnostic Report") {
+            screen = "Report"; render()
+        }, match().apply { topMargin = dp(13) })
+        content.addView(secondaryButton("Refresh USB Scan") { render() }, match().apply { topMargin = dp(8) })
+    }
+
+    private fun reportScreen() {
+        topBar("Diagnostic Report", "‹") { screen = "Diagnostics"; render() }
+        val scroll = ScrollView(this)
+        content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(13), dp(13), dp(13), dp(18))
+        }
+        scroll.addView(content)
+        root.addView(scroll, LinearParams(-1, 0, 1f))
+
+        val manager = getSystemService(Context.USB_SERVICE) as UsbManager
+        val devices = manager.deviceList.values.toList()
+        val report = DeviceDiagnostics.collect()
+
+        val device = card()
+        device.addView(text("${report.manufacturer} ${report.model}", 20, ink, true))
+        addInfo(device, "Android Version", report.androidVersion)
+        addInfo(device, "Model / Device Code", report.deviceCode)
+        addInfo(device, "Android SDK", report.sdk.toString())
+        addInfo(device, "USB OTG", if (devices.isEmpty()) "No USB device detected" else "USB device visible")
+        addInfo(device, "Screen Lock Status", "Not inspected")
+        content.addView(device, match())
+
+        sectionTitle("DIAGNOSIS RESULT", "Completed checks only")
+        val results = card()
+        addStatus(results, "USB Host connection", if (devices.isEmpty()) "Not detected" else "Detected", devices.isNotEmpty())
+        addStatus(results, "Basic device information", "Available", true)
+        addStatus(results, "Repair assessment", "Technician review required", false)
+        addStatus(results, "Lock removal", "Not supported", false)
+        addStatus(results, "Wipe / Factory reset", "Official owner-authorized process only", false)
+        content.addView(results, match())
+
+        sectionTitle("RECOMMENDED ACTION", "Choose a safe next step")
+        content.addView(serviceTile("🔧", "Repair", "Record symptoms and inspect", blue) {
+            info("Repair", "Use the technician checklist and manufacturer service documentation.")
+        }, match())
+        content.addView(serviceTile("🛡", "Official Recovery", "Owner-assisted recovery", purple) {
+            info("Recovery", "The owner must complete credential and account verification.")
+        }, match().apply { topMargin = dp(8) })
+        content.addView(serviceTile("🧹", "Reset Guidance", "Warn about permanent data loss", orange) {
+            info("Reset warning", "Factory reset erases data and may require the previously synced account. Obtain explicit consent.")
+        }, match().apply { topMargin = dp(8) })
+
+        content.addView(secondaryButton("Share basic report") {
+            val message = buildString {
+                appendLine("ANB Mobile Repair Studio — Diagnostic Report")
+                appendLine("Device: ${report.manufacturer} ${report.model}")
+                appendLine("Android: ${report.androidVersion} (SDK ${report.sdk})")
+                appendLine("USB visible: ${if (devices.isEmpty()) "No" else "Yes"}")
+                appendLine("Screen lock: Not inspected")
+                appendLine("No private data or credentials accessed.")
+            }
+            val send = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, message)
+            }
+            startActivity(Intent.createChooser(send, "Share diagnostic summary"))
+        }, match().apply { topMargin = dp(12) })
+    }
+
+    private fun topBar(title: String, back: String, action: () -> Unit) {
+        val bar = row().apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(12), dp(8), dp(12), dp(8))
+            setBackgroundColor(navy)
+        }
+        bar.addView(text(back, 30, white, false).apply {
+            gravity = Gravity.CENTER
+            setOnClickListener { action() }
+        }, lp(42, 48))
+        bar.addView(text(title, 18, white, true), LinearParams(0, -2, 1f))
+        bar.addView(text("ⓘ", 21, white, true).apply {
+            gravity = Gravity.CENTER
+            setOnClickListener { info("Diagnostics help", "This report only contains information available to this app. USB visibility is not proof of phone unlock or full diagnostic access.") }
+        }, lp(36, 48))
+        root.addView(bar, match())
+    }
+
+    private fun bottomNav() {
+        val nav = row().apply {
+            gravity = Gravity.CENTER
+            setPadding(dp(4), dp(6), dp(4), dp(6))
             setBackgroundColor(white)
         }
-        listOf("Home", "Devices", "Tools", "Records", "More").forEach { name ->
-            val glyph = when (name) {
-                "Home" -> "⌂"
-                "Devices" -> "▣"
-                "Tools" -> "⚒"
-                "Records" -> "▤"
-                else -> "•••"
-            }
-            nav.addView(label("$glyph\n$name", 10, if (selectedTab == name) blue else muted, selectedTab == name).apply {
+        listOf("⌂\nHome", "▣\nDevices", "⎓\nConnect", "◷\nHistory", "•••\nMore").forEachIndexed { index, label ->
+            nav.addView(text(label, 11, if (index == 0 || index == 2) blue else muted, true).apply {
                 gravity = Gravity.CENTER
-                setOnClickListener { navigate(name) }
-            }, LinearLayout.LayoutParams(0, dp(48), 1f))
+                setOnClickListener {
+                    if (index == 1 || index == 2) { screen = "Diagnostics"; render() }
+                    else if (index == 0) { screen = "Home"; render() }
+                    else info(if (index == 3) "History" else "More", "Repair records and official support guidance are available in the Shop Edition.")
+                }
+            }, LinearParams(0, dp(52), 1f))
         }
         root.addView(nav, match())
     }
 
-    private fun navigate(name: String) {
-        selectedTab = name
-        render()
-    }
-
-    private fun section(title: String, subtitle: String) {
-        val block = LinearLayout(this).apply {
+    private fun sectionTitle(title: String, subtitle: String) {
+        val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(2), dp(17), dp(2), dp(10))
+            setPadding(dp(2), dp(14), dp(2), dp(8))
         }
-        block.addView(label(title, 16, ink, true))
-        block.addView(label(subtitle, 12, muted, false))
-        page.addView(block, match())
+        box.addView(text(title, 15, ink, true))
+        box.addView(text(subtitle, 11, muted, false))
+        content.addView(box, match())
     }
 
-    private fun brandTile(name: String, symbol: String, color: Int): LinearLayout = LinearLayout(this).apply {
+    private fun serviceTile(icon: String, title: String, sub: String, color: Int, action: () -> Unit): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(8), dp(9), dp(8), dp(9))
+            background = gradient(color, Color.rgb(
+                (Color.red(color) * 0.65).toInt().coerceIn(0,255),
+                (Color.green(color) * 0.65).toInt().coerceIn(0,255),
+                (Color.blue(color) * 0.65).toInt().coerceIn(0,255)
+            ), 15)
+            addView(text(icon, 25, white, true).apply { gravity = Gravity.CENTER })
+            addView(text(title, 14, white, true).apply { gravity = Gravity.CENTER })
+            addView(text(sub, 10, white, false).apply { gravity = Gravity.CENTER })
+            setOnClickListener { action() }
+        }
+    }
+
+    private fun card() = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        gravity = Gravity.CENTER
-        setPadding(dp(8), dp(12), dp(8), dp(12))
-        background = rounded(color, 15, color)
-        addView(label(symbol, 22, white, true).apply { gravity = Gravity.CENTER })
-        addView(label(name, 13, white, true).apply { gravity = Gravity.CENTER })
-        setOnClickListener { showBrandGuide(name) }
+        setPadding(dp(13), dp(12), dp(13), dp(12))
+        background = rounded(white, 14, Color.rgb(207, 223, 244))
+        elevation = dp(2).toFloat()
     }
 
-    private fun actionTile(title: String, subtitle: String, action: () -> Unit): LinearLayout = card().apply {
-        addView(label(title, 14, ink, true))
-        addView(label(subtitle, 11, muted, false))
+    private fun addStatus(parent: LinearLayout, title: String, status: String, ok: Boolean) {
+        val r = row().apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(4), 0, dp(4)) }
+        r.addView(text(if (ok) "●" else "○", 16, if (ok) green else orange, true), lp(27, -2))
+        r.addView(text(title, 12, ink, true), LinearParams(0, -2, 1f))
+        r.addView(text(status, 11, if (ok) green else muted, true), wrap())
+        parent.addView(r, match())
+        parent.addView(View(this).apply { setBackgroundColor(Color.rgb(230, 237, 247)) }, LinearParams(-1, dp(1)))
+    }
+
+    private fun addInfo(parent: LinearLayout, key: String, value: String) {
+        val r = row().apply { setPadding(0, dp(3), 0, dp(3)) }
+        r.addView(text(key, 11, muted, false), LinearParams(0, -2, 1f))
+        r.addView(text(value, 11, ink, true), wrap())
+        parent.addView(r, match())
+    }
+
+    private fun primaryButton(title: String, action: () -> Unit) = Button(this).apply {
+        text = title; isAllCaps = false; textSize = 14f; setTextColor(white)
+        background = rounded(blue, 13, blue); minHeight = dp(48)
         setOnClickListener { action() }
     }
 
-    private fun card(): LinearLayout = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
-        setPadding(dp(15), dp(15), dp(15), dp(15))
-        background = rounded(white, 17, border)
-        elevation = dp(1).toFloat()
+    private fun secondaryButton(title: String, action: () -> Unit) = Button(this).apply {
+        text = title; isAllCaps = false; textSize = 13f; setTextColor(blue)
+        background = rounded(pale, 13, Color.rgb(197, 218, 246)); minHeight = dp(46)
+        setOnClickListener { action() }
     }
 
-    private fun addInfoRow(parent: LinearLayout, key: String, value: String) {
-        parent.addView(label(key.uppercase(), 10, muted, true))
-        parent.addView(label(value, 14, ink, false))
-        parent.addView(View(this), LinearLayout.LayoutParams(1, dp(5)))
-    }
-
-    private fun button(text: String, primary: Boolean): Button = Button(this).apply {
-        this.text = text
-        textSize = 13f
-        isAllCaps = false
-        setTextColor(if (primary) white else blue)
-        background = rounded(if (primary) blue else pale, 13, if (primary) blue else border)
-        minHeight = dp(47)
-        setPadding(dp(12), dp(7), dp(12), dp(7))
-    }
-
-    private fun label(text: String, size: Int, color: Int, bold: Boolean): TextView = TextView(this).apply {
-        this.text = text
-        textSize = size.toFloat()
-        setTextColor(color)
+    private fun text(value: String, size: Int, color: Int, bold: Boolean) = TextView(this).apply {
+        text = value; textSize = size.toFloat(); setTextColor(color)
         if (bold) setTypeface(typeface, Typeface.BOLD)
         setLineSpacing(dp(2).toFloat(), 1f)
-        setPadding(0, dp(3), 0, dp(3))
     }
 
-    private fun rounded(color: Int, radius: Int, stroke: Int): GradientDrawable = GradientDrawable().apply {
-        setColor(color)
-        cornerRadius = dp(radius).toFloat()
-        setStroke(dp(1), stroke)
+    private fun row() = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+    private fun space(width: Int) = View(this).apply { layoutParams = lp(width, 1) }
+    private fun lp(width: Int, height: Int) = LinearLayout.LayoutParams(dp(width), if (height < 0) height else dp(height))
+    private fun wrap() = LinearLayout.LayoutParams(-2, -2)
+    private fun match() = LinearLayout.LayoutParams(-1, -2)
+    private fun LinearParams(width: Int, height: Int, weight: Float) = LinearLayout.LayoutParams(width, height, weight)
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+
+    private fun rounded(color: Int, radius: Int, stroke: Int) = GradientDrawable().apply {
+        setColor(color); cornerRadius = dp(radius).toFloat(); setStroke(dp(1), stroke)
     }
 
-    private fun showInfo(title: String, message: String) {
+    private fun gradient(start: Int, end: Int, radius: Int) = GradientDrawable(
+        GradientDrawable.Orientation.TL_BR, intArrayOf(start, end)
+    ).apply { cornerRadius = dp(radius).toFloat() }
+
+    private fun info(title: String, message: String) {
         AlertDialog.Builder(this).setTitle(title).setMessage(message).setPositiveButton("OK", null).show()
     }
 
     private fun toast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
-
-    private fun match() = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-    private fun wrap() = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 }
