@@ -351,7 +351,7 @@ class MainActivity : Activity() {
         r.addView(text(title, 12, ink, true), LinearParams(0, -2, 1f))
         r.addView(text(status, 11, if (ok) green else muted, true), wrap())
         parent.addView(r, match())
-        parent.addView(View(this).apply { setBackgroundColor(Color.rgb(230, 237, 247)) }, LinearParams(-1, dp(1)))
+        parent.addView(View(this).apply { setBackgroundColor(Color.rgb(230, 237, 247)) }, lp(-1, 1))
     }
 
     private fun addInfo(parent: LinearLayout, key: String, value: String) {
